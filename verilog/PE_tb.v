@@ -9,10 +9,16 @@ always #(`CYCLE/2) clk = ~clk;
 
 
 // dump waveform
+// vcd
 initial begin
-    $fsdbDumpfile("PE.fsdb");
-    $fsdbDumpvars(0, "+mda");
+    $dumpfile("PE.vcd");
+    $dumpvars(0, pe0);
 end
+// fsdb
+// initial begin
+//     $fsdbDumpfile("PE.fsdb");
+//     $fsdbDumpvars(0, "+mda");
+// end
 
 // time out
 initial begin

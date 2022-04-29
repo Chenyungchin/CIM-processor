@@ -12,6 +12,7 @@ module Core(
     input       [255:0] act_in1, // 4b x 64
     input       [255:0] act_in2, // 4b x 64
     input       [255:0] act_in3, // 4b x 64
+    input               slide_en, // signal controlling whether registers pass data horizontally to the next (pass signals when slide_en == 1)
     output      [287:0] weight_out, // read out 4b x 8 x 9 (= 288) weight when STDR
     output      [1007:0] PSUM // 14b x 8 x 9(= 1008) output
 );
@@ -35,7 +36,7 @@ reg   [255:0] act_column2_in3;
 
 // horizontal pipeline: pass the input activation horizontally
 always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
+    if (!rst_n) begin // reset
         act_column1_in1 <= 256'b0;
         act_column1_in2 <= 256'b0;
         act_column1_in3 <= 256'b0;
@@ -44,12 +45,22 @@ always @(posedge clk or negedge rst_n) begin
         act_column2_in3 <= 256'b0;
     end
     else begin
-        act_column1_in1 <= act_in1;
-        act_column1_in2 <= act_in2;
-        act_column1_in3 <= act_in3;
-        act_column2_in1 <= act_column1_in1;
-        act_column2_in2 <= act_column1_in2;
-        act_column2_in3 <= act_column1_in3;
+        if (slide_en) begin // pass the data horizontally
+            act_column1_in1 <= act_in1;
+            act_column1_in2 <= act_in2;
+            act_column1_in3 <= act_in3;
+            act_column2_in1 <= act_column1_in1;
+            act_column2_in2 <= act_column1_in2;
+            act_column2_in3 <= act_column1_in3;
+        end
+        else begin // retain the orginal value
+            act_column1_in1 <= act_column1_in1;
+            act_column1_in2 <= act_column1_in2;
+            act_column1_in3 <= act_column1_in3;
+            act_column2_in1 <= act_column2_in1;
+            act_column2_in2 <= act_column2_in2;
+            act_column2_in3 <= act_column2_in3;
+        end
     end
 end
 
