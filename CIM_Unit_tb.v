@@ -11,8 +11,8 @@ always #(`CYCLE/2) clk = ~clk;
 // ========== dump waveform ===============
 // vcd
 initial begin
-    $dumpfile("Macro.vcd");
-    $dumpvars(0, macro0);
+    $dumpfile("CIM_Unit.vcd");
+    $dumpvars(0, CIM_Unit0);
 end
 // fsdb
 // initial begin
@@ -32,7 +32,8 @@ end
 // ========== instantiate DUT =============
 reg           rst_n = 1;
 reg           STDW = 0, STDR = 0;
-reg     [2:0] CIM_Core_A = 0, STD_Core_A = 0;
+reg           CIM_Core_A = 0;
+reg           CIM_en = 0, STR_en = 0;
 reg     [5:0] STD_row_A = 0;
 reg   [287:0] weight_in = 0;
 reg   [255:0] act_in1 = 0, act_in2 = 0, act_in3 = 0;
@@ -43,7 +44,8 @@ CIM_Unit CIM_Unit0(
     .clk(clk),
     .rst_n(rst_n),
     .CIM_Core_A(CIM_Core_A),
-    .STD_Core_A(STD_Core_A),
+    .CIM_en(CIM_en),
+    .STR_en(STD_en),
     .STDW(STDW),
     .STDR(STDR),
     .STD_row_A(STD_row_A),

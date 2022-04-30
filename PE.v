@@ -1,5 +1,6 @@
 module PE (
     // input              IN_valid, 
+    input              CIM_en,
     input              STDW, // == 1 if standard write mode (weight updating)
     input              STDR, // == 1 if standard read mode
     input        [5:0] STD_A, // address for determining which row (1 out of 64) to read/write
@@ -27,8 +28,10 @@ always@(*) begin
         weight_out = weight[STD_A];
     end
     else begin // normal CIM operation
-        for (i = 0; i < 64; i = i+1) begin
-            PSUM = PSUM + weight[i] * act_in[4*i+3 -: 4]; // 4b input activation
+        if (CIM_en) begin
+            for (i = 0; i < 64; i = i+1) begin
+                PSUM = PSUM + weight[i] * act_in[4*i+3 -: 4]; // 4b input activation
+            end
         end
     end
 end
