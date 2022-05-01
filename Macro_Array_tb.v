@@ -1,8 +1,8 @@
 `timescale 1ns/10ps
 `define CYCLE 10.0
-`define PATTERN 169
+`define PATTERN 85
 
-module Macro_tb;
+module Macro_Array_tb;
 
 // ================= clk generation =====================
 reg clk = 1;
@@ -12,12 +12,12 @@ always #(`CYCLE/2) clk = ~clk;
 // ================= dump waveform ======================
 // vcd
 // initial begin
-//     $dumpfile("Macro.vcd");
-//     $dumpvars(0, macro0);
+//     $dumpfile("Macro_Array.vcd");
+//     $dumpvars(0, macro_array0);
 // end
 // fsdb
 initial begin
-    $fsdbDumpfile("Macro.fsdb");
+    $fsdbDumpfile("Macro_Array.fsdb");
     $fsdbDumpvars(0, "+mda");
 end
 
@@ -31,40 +31,51 @@ initial begin
 end
 
 // ================= instantiate DUT ====================
+reg          rst_n;
 reg          CIM_en;
 reg          STDW, STDR;
 reg    [5:0] STD_A;
-reg   [31:0] weight_in;
-reg  [255:0] act_in;
-wire  [31:0] weight_out;
-wire [111:0] PSUM;
+reg  [287:0] weight_in;
+reg  [255:0] act_in1, act_in2, act_in3;
+reg          slide_en;
+wire [287:0] weight_out;
+wire [143:0] PSUM;
 
-Macro macro0(
+Macro_Array macro_array0(
+    .clk(clk),
+    .rst_n(rst_n),
     .CIM_en(CIM_en),
     .STDW(STDW),
     .STDR(STDR),
     .STD_A(STD_A),
     .weight_in(weight_in), // 4b
-    .act_in(act_in), // 4b x 64
+    .act_in1(act_in1), // 4b x 64
+    .act_in2(act_in2), // 4b x 64
+    .act_in3(act_in3), // 4b x 64
+    .slide_en(slide_en),
     .weight_out(weight_out),
     .PSUM(PSUM) // 14b output
 );
 
 // ============== Initial Memory ====================
-reg [2:0]   INPUT_CMD_MEM         [0:`PATTERN-1];
-reg [5:0]   INPUT_STD_A_MEM       [0:`PATTERN-1];
-reg [31:0]  INPUT_WEIGHT_IN_MEM   [0:`PATTERN-1];
-reg [255:0] INPUT_ACT_IN_MEM      [0:`PATTERN-1];
-reg [31:0]  GOLDEN_WEIGHT_OUT_MEM [0:`PATTERN-1];
-reg [111:0] GOLDEN_PSUM_MEM       [0:`PATTERN-1];
+reg [2:0]   INPUT_CMD_MEM          [0:`PATTERN-1];
+reg [5:0]   INPUT_STD_A_MEM        [0:`PATTERN-1];
+reg [287:0] INPUT_WEIGHT_IN_MEM    [0:`PATTERN-1];
+reg [255:0] INPUT_ACT_IN1_MEM      [0:`PATTERN-1];
+reg [255:0] INPUT_ACT_IN2_MEM      [0:`PATTERN-1];
+reg [255:0] INPUT_ACT_IN3_MEM      [0:`PATTERN-1];
+reg [287:0] GOLDEN_WEIGHT_OUT_MEM  [0:`PATTERN-1];
+reg [143:0] GOLDEN_PSUM_MEM        [0:`PATTERN-1];
 
 initial begin
-    $readmemb("pattern/Macro_pattern/command.dat", INPUT_CMD_MEM);
-    $readmemb("pattern/Macro_pattern/STD_A.dat", INPUT_STD_A_MEM);
-    $readmemb("pattern/Macro_pattern/weight_in.dat", INPUT_WEIGHT_IN_MEM);
-    $readmemb("pattern/Macro_pattern/act_in.dat", INPUT_ACT_IN_MEM);
-    $readmemb("pattern/Macro_pattern/weight_out.dat", GOLDEN_WEIGHT_OUT_MEM);
-    $readmemb("pattern/Macro_pattern/PSUM.dat", GOLDEN_PSUM_MEM);
+    $readmemb("pattern/Macro_Array_pattern/command.dat", INPUT_CMD_MEM);
+    $readmemb("pattern/Macro_Array_pattern/STD_A.dat", INPUT_STD_A_MEM);
+    $readmemb("pattern/Macro_Array_pattern/weight_in.dat", INPUT_WEIGHT_IN_MEM);
+    $readmemb("pattern/Macro_Array_pattern/act_in1.dat", INPUT_ACT_IN1_MEM);
+    $readmemb("pattern/Macro_Array_pattern/act_in2.dat", INPUT_ACT_IN2_MEM);
+    $readmemb("pattern/Macro_Array_pattern/act_in3.dat", INPUT_ACT_IN3_MEM);
+    $readmemb("pattern/Macro_Array_pattern/weight_out.dat", GOLDEN_WEIGHT_OUT_MEM);
+    $readmemb("pattern/Macro_Array_pattern/PSUM.dat", GOLDEN_PSUM_MEM);
 end
 
 // ===== input pattern & result checking ===========
@@ -73,6 +84,9 @@ integer err_num = 0;
 
 // input pattern
 initial begin
+    rst_n = 0;
+    slide_en = 1;
+    @(posedge clk) rst_n = 1;
     for (i=0; i<10; i=i+1) begin
         @(posedge clk);
     end
@@ -82,7 +96,9 @@ initial begin
         STDR   = INPUT_CMD_MEM[i][0];
         STD_A  = INPUT_STD_A_MEM[i];
         weight_in = INPUT_WEIGHT_IN_MEM[i];
-        act_in = INPUT_ACT_IN_MEM[i];
+        act_in1 <= INPUT_ACT_IN1_MEM[i];
+        act_in2 <= INPUT_ACT_IN2_MEM[i];
+        act_in3 <= INPUT_ACT_IN3_MEM[i];
         @(posedge clk);
     end
     CIM_en = 'bx;
@@ -90,20 +106,23 @@ initial begin
     STDR   = 'bx;
     STD_A  = 'bx;
     weight_in = 'bx;
-    act_in = 'bx;
+    act_in1 = 'bx;
+    act_in2 = 'bx;
+    act_in3 = 'bx;
 end
 
 // check output
 initial begin
+    @(posedge clk);
     for (j=0; j<11; j=j+1) begin
         @(negedge clk);
     end
     for (j=0; j<`PATTERN; j=j+1) begin
-        if (GOLDEN_WEIGHT_OUT_MEM[j] === weight_out && weight_out !== 4'bx && GOLDEN_PSUM_MEM[j] === PSUM && PSUM !== 14'bx) begin
-            $display("\033[1;92mPattern %3d passed. / Output weight_out: %12d / Golden weight_out: %12d / Output PSUM: %5d / Golden PSUM: %5d\033[0m", j, weight_out, GOLDEN_WEIGHT_OUT_MEM[j], PSUM, GOLDEN_PSUM_MEM[j]);
+        if (GOLDEN_PSUM_MEM[j] === PSUM && PSUM !== 14'bx) begin
+            $display("\033[1;92mPattern %3d passed. / Output PSUM: %43d / Golden PSUM: %43d\033[0m", j, PSUM, GOLDEN_PSUM_MEM[j]);
         end
         else begin
-            $display("\033[1;31mPattern %3d failed. / Output weight_out: %12d / Golden weight_out: %12d / Output PSUM: %5d / Golden PSUM: %5d\033[0m", j, weight_out, GOLDEN_WEIGHT_OUT_MEM[j], PSUM, GOLDEN_PSUM_MEM[j]);
+            $display("\033[1;31mPattern %3d failed. / Output PSUM: %43d / Golden PSUM: %43d\033[0m", j, PSUM, GOLDEN_PSUM_MEM[j]);
             err_num = err_num + 1;
         end
         @(negedge clk);

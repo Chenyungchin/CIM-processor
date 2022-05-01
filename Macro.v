@@ -1,6 +1,7 @@
 // A CIM Macro consists of 8 CIM PEs
 module Macro(
     // input              IN_valid, 
+    input              CIM_en,
     input              STDW, // == 1 if standard write mode (weight updating)
     input              STDR, // == 1 if standard read mode
     input        [5:0] STD_A, // address for determining which row (1 out of 64) to read/write
@@ -15,6 +16,7 @@ genvar i;
 
 for (i = 0; i < 8; i = i+1) begin
     PE pe0(
+        .CIM_en(CIM_en),
         .STDW(STDW),
         .STDR(STDR),
         .STD_A(STD_A),
