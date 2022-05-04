@@ -1,26 +1,27 @@
 `timescale 1ns/10ps
 `define CYCLE 10.0
+`define PATTERN 85
 
 module CIM_Unit_tb;
 
-// ========== clk generation ==============
+// ================= clk generation =====================
 reg clk = 1;
 always #(`CYCLE/2) clk = ~clk;
 
 
-// ========== dump waveform ===============
+// ================= dump waveform ======================
 // vcd
-initial begin
-    $dumpfile("CIM_Unit.vcd");
-    $dumpvars(0, CIM_Unit0);
-end
-// fsdb
 // initial begin
-//     $fsdbDumpfile("CIM_Unit.fsdb");
-//     $fsdbDumpvars(0, "+mda");
+//     $dumpfile("CIM_Unit.vcd");
+//     $dumpvars(0, cim_unit0);
 // end
+// fsdb
+initial begin
+    $fsdbDumpfile("CIM_Unit.fsdb");
+    $fsdbDumpvars(0, "+mda");
+end
 
-// ========== time out ====================
+// ================== time out ==========================
 initial begin
     # (10000 * `CYCLE);
     $display("\n\033[1;31m=============================================");
@@ -29,74 +30,119 @@ initial begin
 	$finish;
 end
 
-// ========== instantiate DUT =============
-reg           rst_n = 1;
-reg           STDW = 0, STDR = 0;
-reg           CIM_Core_A = 0;
-reg           CIM_en = 0, STR_en = 0;
-reg     [5:0] STD_row_A = 0;
-reg   [287:0] weight_in = 0;
-reg   [255:0] act_in1 = 0, act_in2 = 0, act_in3 = 0;
-wire  [287:0] weight_out;
-wire [1007:0] PSUM;
+// ================= instantiate DUT ====================
+reg           rst_n;
+reg           CIM_Core_A;
+reg           CIM_en;
+reg           STDW, STDR;
+reg     [5:0] STD_A;
+reg  [2303:0] weight_in;
+reg   [255:0] act_in1, act_in2, act_in3;
+reg           slide_en;
+wire [2303:0] weight_out;
+wire  [143:0] PSUM;
 
-CIM_Unit CIM_Unit0(
+CIM_Unit cim_unit0(
     .clk(clk),
     .rst_n(rst_n),
     .CIM_Core_A(CIM_Core_A),
     .CIM_en(CIM_en),
-    .STR_en(STD_en),
     .STDW(STDW),
     .STDR(STDR),
-    .STD_row_A(STD_row_A),
-    .weight_in(weight_in), // 4b x 8
+    .STD_A(STD_A),
+    .weight_in(weight_in), // 4b
     .act_in1(act_in1), // 4b x 64
     .act_in2(act_in2), // 4b x 64
     .act_in3(act_in3), // 4b x 64
-    .weight_out(weight_out),// 4b x 8
-    .PSUM(PSUM) // 14b x 8 output
+    .slide_en(slide_en),
+    .weight_out(weight_out),
+    .PSUM(PSUM) // 14b output
 );
 
-// ========= input pattern ================
-integer i;
+// ============== Initial Memory ====================
+reg [2:0]   INPUT_CMD_MEM          [0:`PATTERN-1];
+reg [5:0]   INPUT_STD_A_MEM        [0:`PATTERN-1];
+reg [287:0] INPUT_WEIGHT_IN_MEM    [0:`PATTERN-1];
+reg [255:0] INPUT_ACT_IN1_MEM      [0:`PATTERN-1];
+reg [255:0] INPUT_ACT_IN2_MEM      [0:`PATTERN-1];
+reg [255:0] INPUT_ACT_IN3_MEM      [0:`PATTERN-1];
+reg [287:0] GOLDEN_WEIGHT_OUT_MEM  [0:`PATTERN-1];
+reg [143:0] GOLDEN_PSUM_MEM        [0:`PATTERN-1];
 
 initial begin
-    // update weight
-    @(posedge clk) rst_n = 0;
+    $readmemb("pattern/Macro_Array_pattern/command.dat", INPUT_CMD_MEM);
+    $readmemb("pattern/Macro_Array_pattern/STD_A.dat", INPUT_STD_A_MEM);
+    $readmemb("pattern/Macro_Array_pattern/weight_in.dat", INPUT_WEIGHT_IN_MEM);
+    $readmemb("pattern/Macro_Array_pattern/act_in1.dat", INPUT_ACT_IN1_MEM);
+    $readmemb("pattern/Macro_Array_pattern/act_in2.dat", INPUT_ACT_IN2_MEM);
+    $readmemb("pattern/Macro_Array_pattern/act_in3.dat", INPUT_ACT_IN3_MEM);
+    $readmemb("pattern/Macro_Array_pattern/weight_out.dat", GOLDEN_WEIGHT_OUT_MEM);
+    $readmemb("pattern/Macro_Array_pattern/PSUM.dat", GOLDEN_PSUM_MEM);
+end
+
+// ===== input pattern & result checking ===========
+integer i, j;
+integer err_num = 0;
+
+// input pattern
+initial begin
+    rst_n = 0;
+    slide_en = 1;
     @(posedge clk) rst_n = 1;
-    @(posedge clk) STDW = 1;
-    // store data into core4
-    @(posedge clk)
-    STD_Core_A = 3'd4;
-    for (i = 0; i < 64; i = i+1) begin
-        STD_row_A = STD_row_A + 1;
-        weight_in = 288'b0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001;
+    for (i=0; i<10; i=i+1) begin
         @(posedge clk);
     end
-    @(posedge clk)
-    // read data from core4
-    STDW = 0;
-    STDR = 1;
-    STD_row_A = 35;
-    @(posedge clk)
-    // operate CIM at core 4 and store data into core3
-    CIM_Core_A = 3'd4;
-    STD_Core_A = 3'd3;
-    STDW = 1;
-    STDR = 0;
-    act_in1 <= 256'b0001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001;
-    act_in2 <= 256'b0001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001;
-    act_in3 <= 256'b0001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001;
-    for (i = 0; i < 64; i = i+1) begin
-        STD_row_A = STD_row_A + 1;
-        weight_in = 288'b0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001_0001;
+    for (i=0; i<`PATTERN; i=i+1) begin
+        CIM_en = INPUT_CMD_MEM[i][2];
+        STDW   = INPUT_CMD_MEM[i][1];
+        STDR   = INPUT_CMD_MEM[i][0];
+        STD_A  = INPUT_STD_A_MEM[i];
+        weight_in = INPUT_WEIGHT_IN_MEM[i];
+        act_in1 <= INPUT_ACT_IN1_MEM[i];
+        act_in2 <= INPUT_ACT_IN2_MEM[i];
+        act_in3 <= INPUT_ACT_IN3_MEM[i];
         @(posedge clk);
+    end
+    CIM_en = 'bx;
+    STDW   = 'bx;
+    STDR   = 'bx;
+    STD_A  = 'bx;
+    weight_in = 'bx;
+    act_in1 = 'bx;
+    act_in2 = 'bx;
+    act_in3 = 'bx;
+end
+
+// check output
+initial begin
+    @(posedge clk);
+    for (j=0; j<11; j=j+1) begin
+        @(negedge clk);
+    end
+    for (j=0; j<`PATTERN; j=j+1) begin
+        if (GOLDEN_PSUM_MEM[j] === PSUM && PSUM !== 14'bx) begin
+            $display("\033[1;92mPattern %3d passed. / Output PSUM: %43d / Golden PSUM: %43d\033[0m", j, PSUM, GOLDEN_PSUM_MEM[j]);
+        end
+        else begin
+            $display("\033[1;31mPattern %3d failed. / Output PSUM: %43d / Golden PSUM: %43d\033[0m", j, PSUM, GOLDEN_PSUM_MEM[j]);
+            err_num = err_num + 1;
+        end
+        @(negedge clk);
     end
 
-    // read data from core3
-    STDW = 0;
-    STDR = 1;
-    STD_row_A = 26;
+    if (err_num != 0) begin
+        $display("\n\033[1;31m=============================================");
+		$display("              Simulation failed              ");
+		$display("=============================================\033[0m");
+    end
+    else begin
+        $display("\n\033[1;92m=============================================");
+		$display("              Simulation passed              ");
+		$display("=============================================\033[0m");
+    end
+
+    $finish;
 end
+
 
 endmodule
