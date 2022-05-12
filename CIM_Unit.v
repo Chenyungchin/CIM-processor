@@ -4,19 +4,19 @@
 // == 2. Only CIM (No STD): Both CIM_Core_A and STD_Core_A point to the CIM Core 
 module CIM_Unit(
     // input              IN_valid, 
-    input              clk,
-    input              rst_n,
-    input              CIM_Core_A, // address for determining which core to perform CIM operation
-    input              CIM_en,
-    input              STDW, // == 1 if standard write mode (weight updating)
-    input              STDR, // == 1 if standard read mode
-    input        [5:0] STD_A, // address for determining which row (1 out of 64) to read/write
-    input     [2303:0] weight_in,// update 4b x 8 x 9 x 8 (= 2304) weight when STDW
+    input               clk,
+    input               rst_n,
+    input               CIM_Core_A, // address for determining which core to perform CIM operation
+    input               CIM_en,
+    input               STDW, // == 1 if standard write mode (weight updating)
+    input               STDR, // == 1 if standard read mode
+    input        [5:0]  STD_A, // address for determining which row (1 out of 64) to read/write
+    input     [2303:0]  weight_in,// update 4b x 8 x 9 x 8 (= 2304) weight when STDW
     // input              CIM_A,
-    input      [255:0] act_in1, // 4b x 64
-    input      [255:0] act_in2, // 4b x 64
-    input      [255:0] act_in3, // 4b x 64
-    input              slide_en,
+    input      [255:0]  act_in1, // 4b x 64
+    input      [255:0]  act_in2, // 4b x 64
+    input      [255:0]  act_in3, // 4b x 64
+    input               slide_en,
     output     [2303:0] weight_out, // read out 4b x 8 x 9 x 8 (= 2303) weight when STDR
     output     [1151:0] PSUM // 18b x 8 x 8(= 1152) output
 );
@@ -25,8 +25,8 @@ module CIM_Unit(
 // genvar i, ii;
 
 // ================== reg and wire ===================
-wire  [1007:0] PSUM_core       [0:1];
-wire   [287:0] weight_out_core [0:1];
+wire  [1151:0] PSUM_core       [0:1];
+wire  [2303:0] weight_out_core [0:1];
 
 // wire           STDW_core       [0:7];
 // wire           STDR_core       [0:7];
@@ -63,7 +63,7 @@ Core core0(
     .CIM_en(CIM_en),
     .STDW(STDW_0),
     .STDR(STDR_0),
-    .STD_A(STD_row_A),
+    .STD_A(STD_A),
     .weight_in(weight_in), // 4b x 8
     .act_in1(act_in1), // 4b x 64
     .act_in2(act_in2), // 4b x 64
@@ -79,7 +79,7 @@ Core core1(
     .CIM_en(CIM_en),
     .STDW(STDW_1),
     .STDR(STDR_1),
-    .STD_A(STD_row_A),
+    .STD_A(STD_A),
     .weight_in(weight_in), // 4b x 8
     .act_in1(act_in1), // 4b x 64
     .act_in2(act_in2), // 4b x 64

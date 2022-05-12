@@ -9,12 +9,13 @@ module NMC #(
     input                                    rst_n,
     input                                    relu_out_en,
     input      [AGGRE_IN_PRECISION*DIM-1:0]  aggre_in,
-    output reg [RELU_OUT_PRECISION*DIM-1: 0] relu_out
+    output reg [RELU_OUT_PRECISION*DIM-1: 0] relu_out // 256
     // output WB_A (write back address)
 );
 
 // =============== wire and reg =======================
 wire [RELU_OUT_PRECISION*DIM-1: 0] relu_out_w;
+wire [AGGRE_OUT_PRECISION*DIM-1: 0] aggre_out;
 reg                                clear; // "clear" is a cycle delay of relu_out_en
 
 // ============== assignments =========================
